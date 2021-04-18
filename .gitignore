@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 data/audio/
+data/waveform/
+data/data_mfcc.pkl
