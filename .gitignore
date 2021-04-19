@@ -128,4 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-data/
+data/audio/
+data/waveform/
+data/data_mfcc.pkl
