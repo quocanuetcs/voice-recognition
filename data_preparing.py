@@ -2,11 +2,12 @@ import librosa
 import preprocessing
 import numpy as np
 
+TIME_LIM = 10
 N_MFCC = 13
-TIME_LENGTH = 1000
+MFCC_LEN_LIM = 700
 
 def load_audio(file):
-    return librosa.load(file)[0]
+    return librosa.load(file, duration=TIME_LIM)[0]
 
 def load_npy(file):
     return np.load(file)
@@ -14,12 +15,12 @@ def load_npy(file):
 def process_mfcc(waveform, fixed_length=True):
     mfcc = preprocessing.mfcc(waveform)
     if fixed_length:
-        if len(mfcc) <= TIME_LENGTH:
-            fixed_mfcc = np.zeros((TIME_LENGTH, N_MFCC), dtype=np.float32)
-            fixed_mfcc[-len(mfcc):] = mfcc[:TIME_LENGTH]
+        if len(mfcc) <= MFCC_LEN_LIM:
+            fixed_mfcc = np.zeros((MFCC_LEN_LIM, N_MFCC), dtype=np.float32)
+            fixed_mfcc[-len(mfcc):] = mfcc[:MFCC_LEN_LIM]
         else:
-            dif = len(mfcc) - TIME_LENGTH
-            fixed_mfcc = mfcc[dif // 2: dif // 2 + TIME_LENGTH]
+            dif = len(mfcc) - MFCC_LEN_LIM
+            fixed_mfcc = mfcc[-MFCC_LEN_LIM:]
         mfcc = fixed_mfcc
     return mfcc
 
