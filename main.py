@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import HTMLResponse
+import numpy as np
 from modeling.gru_gru import GRU_GRU
 import data_preparing
 
@@ -17,7 +18,7 @@ async def compare_speaker(files: List[UploadFile] = File(...)):
         return {"error": "WAV files are required."}
     
     test_pair = data_preparing.process(files[0].file, files[1].file, file_type=files[0].filename[-3:])
-    result = model.predict_proba(test_pair)[0][0]
+    result = np.sqrt(np.mean(np.square(model.predict_proba(test_pair).flatten())))
     return {"same_speaker_probability": f"{result:.7f}"}
 
 @app.get("/")
