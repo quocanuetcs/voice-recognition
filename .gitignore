@@ -128,6 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-data/audio/*/*.wav
+data/*/*/*.wav
 data/waveform/
 data/dataset/
