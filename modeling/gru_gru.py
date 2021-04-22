@@ -42,8 +42,11 @@ class GRU_GRU:
     def load_weights(self):
         self.classifier.load_weights('saved_model/gru_gru_weights.h5')
             
-    def fit(self, X, y, epochs=50, early_stopping_rounds=7):
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
+    def fit(self, X, y, epochs=50, early_stopping_rounds=7, X_val=None, y_val=None):
+        if X_val is None or y_val is None:
+            X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
+        else:
+            X_train, y_train = X, y
         
         model_dir = './checkpoints/'
         callbacks = [

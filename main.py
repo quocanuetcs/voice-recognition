@@ -20,6 +20,9 @@ async def compare_speaker(files: List[UploadFile] = File(...)):
     test_pair = data_preparing.process(files[0].file, files[1].file, file_type=files[0].filename[-3:])
     result = np.sqrt(np.mean(np.square(model.predict_proba(test_pair).flatten())))
     return {"same_speaker_probability": f"{result:.7f}"}
+#     result = model.predict_proba(test_pair).flatten()
+#     result.sort()
+#     return {"same_speaker_probability": f"{result[len(result)//2]:.7f}"}
 
 @app.get("/")
 async def main():
