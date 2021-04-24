@@ -36,6 +36,9 @@ class GRU_GRU:
         model.summary()
         return model
     
+    def plot(self):
+        return tf.keras.utils.plot_model(self.classifier, to_file='modeling/gru_gru.png', show_shapes=True, show_layer_names=True)
+    
     def save_weights(self):
         self.classifier.save_weights('saved_model/gru_gru_weights.h5')
         
