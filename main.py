@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import numpy as np
 from modeling.gru_gru import GRU_GRU
@@ -8,6 +9,14 @@ import data_preparing
 N_MFCC = 13
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 model = GRU_GRU(num_features=N_MFCC)
 model.load_weights()
 
