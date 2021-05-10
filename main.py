@@ -21,12 +21,12 @@ model = GRU_GRU(num_features=N_MFCC)
 model.load_weights()
 
 @app.post("/comparespeaker/")
-async def compare_speaker(files: List[UploadFile] = File(...)):
-    if not ((files[0].filename.endswith(".wav") and files[1].filename.endswith(".wav"))
-           or (files[0].filename.endswith(".npy") and files[1].filename.endswith(".npy"))):
+async def compare_speaker(file_1: UploadFile = File(...), file_2: UploadFile = File(...)):
+    if not ((file_1.filename.endswith(".wav") and file_2.filename.endswith(".wav"))
+           or (file_1.filename.endswith(".npy") and file_2.filename.endswith(".npy"))):
         return {"error": "WAV files are required."}
     
-    test_pair = data_preparing.process(files[0].file, files[1].file, file_type=files[0].filename[-3:])
+    test_pair = data_preparing.process(file_1.file, file_2.file, file_type=file_1.filename[-3:])
     result = np.sqrt(np.mean(np.square(model.predict_proba(test_pair).flatten())))
     return {"same_speaker_probability": f"{result:.7f}"}
 #     result = model.predict_proba(test_pair).flatten()
@@ -38,7 +38,8 @@ async def main():
     content = """
         <body>
             <form action="/comparespeaker/" enctype="multipart/form-data" method="post">
-                <input name="files" type="file" multiple>
+                <input name="file_1" type="file"><br/>
+                <input name="file_2" type="file"><br/>
                 <input type="submit">
             </form>
         </body>
