@@ -21,6 +21,7 @@ fake_users_db = {
     "johndoe": {
         "username": "johndoe",
         "hashed_password": "fakehashedsecret",
+        "voiceprint": None,
     }
 }
 
@@ -51,12 +52,6 @@ app.add_middleware(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-@app.post("/signup")
-async def sign_up(username: str = Form(...), password: str = Form(...), voiceprint: UploadFile = File(...)):
-    user = User(username=username)
-    data_db = user.dict()
-    return data_db['username']
-
 def get_user(db, username: str):
     if username in db:
         user_dict = db[username]
@@ -67,6 +62,22 @@ def fake_hash_password(password: str):
 
 def verify_password(plain_password, hashed_password):
     return fake_hash_password(plain_password) == hashed_password
+
+@app.post("/signup")
+async def sign_up(form_data: OAuth2PasswordRequestForm = Depends(), voiceprint: UploadFile = File(...)):
+    user = get_user(fake_users_db, form_data.username)
+    if user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already exists",
+        )
+    user_data = {
+        "username": form_data.username,
+        "hashed_password": fake_hash_password(form_data.password),
+        "voiceprint": voiceprint,
+    }
+    fake_users_db[form_data.username] = user_data
+    return "You have registered successfully"
 
 def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
@@ -124,24 +135,51 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@app.post("/comparespeaker")
-async def compare_speaker(file_1: UploadFile = File(...), file_2: UploadFile = File(...)):
-    if not ((file_1.filename.endswith(".wav") and file_2.filename.endswith(".wav"))
-           or (file_1.filename.endswith(".npy") and file_2.filename.endswith(".npy"))):
-        return {"error": "WAV files are required."}
-    
+def compare_speaker(file_1, file_2):
     test_pair = data_preparing.process(file_1.file, file_2.file, file_type=file_1.filename[-3:])
     result = np.sqrt(np.mean(np.square(model.predict_proba(test_pair).flatten())))
-    return {"same_speaker_probability": f"{result:.7f}"}
-#     result = model.predict_proba(test_pair).flatten()
-#     result.sort()
-#     return {"same_speaker_probability": f"{result[len(result)//2]:.7f}"}
+    return result
+#   result = model.predict_proba(test_pair).flatten()
+#   result.sort()
+#   return result[len(result)//2]
+
+@app.post("/users/changepassword")
+async def change_password(current_user: User = Depends(get_current_user),
+                          new_password: str = Form(...),
+                          voiceprint: UploadFile = File(...)):
+    
+    if not voiceprint.filename.endswith(".wav"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="WAV file is required",
+        )
+    saved_voiceprint = fake_users_db[current_user.username]["voiceprint"]
+    same_user = compare_speaker(saved_voiceprint, voiceprint) > 0.5
+    if not same_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Voiceprints do not match",
+        )
+    fake_users_db[current_user.username]["hashed_password"] = fake_hash_password(new_password)
+    return "Password changed successfully"
+
+@app.post("/demo")
+async def demo(file_1: UploadFile = File(...), file_2: UploadFile = File(...)):
+    if not ((file_1.filename.endswith(".wav") and file_2.filename.endswith(".wav"))
+           or (file_1.filename.endswith(".npy") and file_2.filename.endswith(".npy"))):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="WAV files are required",
+        )
+        
+    same_speaker_probability = compare_speaker(file_1, file_2)
+    return {"same_speaker_probability": f"{same_speaker_probability:.7f}"}
 
 @app.get("/")
 async def main():
     content = """
         <body>
-            <form action="/comparespeaker/" enctype="multipart/form-data" method="post">
+            <form action="/demo" enctype="multipart/form-data" method="post">
                 <input name="file_1" type="file"><br/>
                 <input name="file_2" type="file"><br/>
                 <input type="submit">
