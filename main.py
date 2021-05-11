@@ -1,12 +1,17 @@
 from typing import List
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 import numpy as np
 from modeling.gru_gru import GRU_GRU
 import data_preparing
 
 N_MFCC = 13
+
+class User(BaseModel):
+    username: str
+    password: str
 
 app = FastAPI()
 app.add_middleware(
@@ -19,6 +24,12 @@ app.add_middleware(
 
 model = GRU_GRU(num_features=N_MFCC)
 model.load_weights()
+
+@app.post("/signup/")
+async def sign_up(username: str = Form(...), password: str = Form(...), voiceprint: UploadFile = File(...)):
+    user = User(username=username,password=password)
+    data_db = user.dict()
+    return data_db['username']
 
 @app.post("/comparespeaker/")
 async def compare_speaker(file_1: UploadFile = File(...), file_2: UploadFile = File(...)):
