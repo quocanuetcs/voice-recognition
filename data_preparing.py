@@ -8,20 +8,15 @@ DURATION_LIM = 60
 N_MFCC = 13
 MFCC_LEN_LIM = 700
 
-def load_audio_pair(file_1, file_2):
-    audio_1 = librosa.load(file_1, duration=DURATION_LIM)[0]
-    audio_2 = librosa.load(file_2, duration=DURATION_LIM)[0]
-    t1 = len(audio_1) / DEFAULT_SR
-    t2 = len(audio_2) / DEFAULT_SR
-    n = max(int(min(t1 / TIME_LIM, t2 / TIME_LIM)), 1)
-    offset_1 = int(max(t1 - n * TIME_LIM, 0) / 2 * DEFAULT_SR)
-    offset_2 = int(max(t2 - n * TIME_LIM, 0) / 2 * DEFAULT_SR)
-    waveforms_1 = []
-    waveforms_2 = []
+def load_wav(file):
+    audio = librosa.load(file, duration=DURATION_LIM)[0]
+    t = len(audio) / DEFAULT_SR
+    n = max(int(t / TIME_LIM), 1)
+    offset = int(max(t - n * TIME_LIM, 0) / 2 * DEFAULT_SR)
+    waveforms = []
     for i in range(n):
-        waveforms_1.append(audio_1[offset_1+i*TIME_LIM*DEFAULT_SR:offset_1+(i+1)*TIME_LIM*DEFAULT_SR])
-        waveforms_2.append(audio_2[offset_2+i*TIME_LIM*DEFAULT_SR:offset_2+(i+1)*TIME_LIM*DEFAULT_SR])
-    return waveforms_1, waveforms_2
+        waveforms.append(audio[offset+i*TIME_LIM*DEFAULT_SR:offset+(i+1)*TIME_LIM*DEFAULT_SR])
+    return waveforms
 
 def load_npy(file):
     return [np.load(file)]
@@ -38,17 +33,23 @@ def process_mfcc(waveform, fixed_length=True):
         mfcc = fixed_mfcc
     return mfcc
 
-def process(audio_file_1, audio_file_2, file_type="wav"):
-    if file_type == "wav":
-        waveforms_1, waveforms_2 = load_audio_pair(audio_file_1, audio_file_2)
+def process(audio_file):
+    waveforms = []
+    if audio_file.filename.endswith(".wav"):
+        waveforms = load_wav(audio_file.file)
+    elif audio_file.filename.endswith(".npy"):
+        waveforms = load_npy(audio_file.file)
+    mfccs = []
+    for waveform in waveforms:
+        mfccs.append(process_mfcc(waveform))
+    return mfccs
+
+def make_model_input(mfccs_1, mfccs_2):
+    len_1 = len(mfccs_1)
+    len_2 = len(mfccs_2)
+    if len_1 < len_2:
+        mfccs_2 = mfccs_2[(len_2 - len_1) // 2: (len_2 - len_1) // 2 + len_1]
     else:
-        waveforms_1 = load_npy(audio_file_1)
-        waveforms_2 = load_npy(audio_file_2)
-    mfccs_1 = []
-    mfccs_2 = []
-    for waveform in waveforms_1:
-        mfccs_1.append(process_mfcc(waveform))
-    for waveform in waveforms_2:
-        mfccs_2.append(process_mfcc(waveform))
+        mfccs_1 = mfccs_1[(len_1 - len_2) // 2: (len_1 - len_2) // 2 + len_2]
     data = np.hstack((np.expand_dims(mfccs_1, axis=1), np.expand_dims(mfccs_2, axis=1)))
     return data

@@ -71,10 +71,15 @@ async def sign_up(form_data: OAuth2PasswordRequestForm = Depends(), voiceprint: 
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists",
         )
+    if not voiceprint.filename.endswith(".wav"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="WAV file is required",
+        )
     user_data = {
         "username": form_data.username,
         "hashed_password": fake_hash_password(form_data.password),
-        "voiceprint": voiceprint,
+        "voiceprint": data_preparing.process(voiceprint),
     }
     fake_users_db[form_data.username] = user_data
     return "You have registered successfully"
@@ -135,8 +140,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-def compare_speaker(file_1, file_2):
-    test_pair = data_preparing.process(file_1.file, file_2.file, file_type=file_1.filename[-3:])
+def compare_speaker(voiceprint_1, voiceprint_2):
+    test_pair = data_preparing.make_model_input(voiceprint_1, voiceprint_2)
     result = np.sqrt(np.mean(np.square(model.predict_proba(test_pair).flatten())))
     return result
 #   result = model.predict_proba(test_pair).flatten()
@@ -154,7 +159,7 @@ async def change_password(current_user: User = Depends(get_current_user),
             detail="WAV file is required",
         )
     saved_voiceprint = fake_users_db[current_user.username]["voiceprint"]
-    same_user = compare_speaker(saved_voiceprint, voiceprint) > 0.5
+    same_user = compare_speaker(saved_voiceprint, data_preparing.process(voiceprint)) > 0.5
     if not same_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -172,7 +177,9 @@ async def demo(file_1: UploadFile = File(...), file_2: UploadFile = File(...)):
             detail="WAV files are required",
         )
         
-    same_speaker_probability = compare_speaker(file_1, file_2)
+    voiceprint_1 = data_preparing.process(file_1)
+    voiceprint_2 = data_preparing.process(file_2)
+    same_speaker_probability = compare_speaker(voiceprint_1, voiceprint_2)
     return {"same_speaker_probability": f"{same_speaker_probability:.7f}"}
 
 @app.get("/")
