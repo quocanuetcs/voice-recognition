@@ -1,0 +1,22 @@
+.recorder-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.recorder-delete {
+    margin: 10px;
+}
+
+.recorder-player {
+    margin-top: 20px;
+}
+
+button.MuiButtonBase-root {
+    margin: 10px;
+}
+
+.audio-react-recorder__canvas {
+    height: 150px;
+    width: 100%;
+}
